@@ -6,22 +6,22 @@ class Node(object):
         s.trans = transform
         for a in ("t", "r", "s"):
             for b in ("x", "y", "z"):
-                cmds.setAttr("{}.{}{}".format(transform, a, b), k=False, cb=False)
+                cmds.setAttr(s._attr(a, b), k=False, cb=False)
     def add(s, attr, val):
         """ Add numeric attribute to object """
         cmds.addAttr(s.trans, ln=attr, dv=val)
-        cmds.setAttr("{}.{}".format(s.trans, attr), k=True)
+        cmds.setAttr(s._attr(attr), k=True)
 
     def set(s, attr, *args, **kwargs):
         """ Set value on attribute """
-        cmds.setAttr("{}.{}".format(s.trans, attr), *args, **kwargs)
+        cmds.setAttr(s._attr(attr), *args, **kwargs)
 
     def get(s, attr, *args, **kwargs):
         """ Get attr """
-        return cmds.getAttr("{}.{}".format(s.trans, attr), *args, **kwargs)
+        return cmds.getAttr(s._attr(attr), *args, **kwargs)
 
-    def __str__(s):
-        return s.trans
+    def __str__(s): return s.trans
+    def _attr(s, *attrs): return "{}.{}".format(s.trans, "".join(attrs))
 
 def annotate(obj, text):
     """ Create annotation """
@@ -34,9 +34,7 @@ def annotate(obj, text):
 
 def controller(obj, attr):
     """ Create controller """
-    ann = annotate(obj, "OFFSET")
-    print "{}".format(ann)
-    cmds.select(ann)
+    ctrl = annotate(obj, "OFFSET")
     # add(ann, "Init", cmds.getAttr())
     # add(ann, "Time", 0)
     # add(ann, "Scalar", 0)
