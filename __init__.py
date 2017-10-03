@@ -12,9 +12,10 @@ class Node(object):
         cmds.addAttr(s.trans, ln=attr, dv=val)
         cmds.setAttr(s._attr(attr), k=True)
 
-    def set(s, attr, *args, **kwargs):
+    def set(s, attr, val, time=None, **kwargs):
         """ Set value on attribute """
-        cmds.setAttr(s._attr(attr), *args, **kwargs)
+        time = cmds.currentTime(q=True) if time is None else time
+        cmds.setKeyframe(s._attr(attr), v=val, t=time, **kwargs)
 
     def get(s, attr, *args, **kwargs):
         """ Get attr """
@@ -35,10 +36,25 @@ def annotate(obj, text):
 def controller(obj, attr):
     """ Create controller """
     ctrl = annotate(obj, "OFFSET")
-    # add(ann, "Init", cmds.getAttr())
-    # add(ann, "Time", 0)
-    # add(ann, "Scalar", 0)
-    # add(ann, "Offset", 0)
+    obj_attr = "{}.{}".format(obj, attr)
+
+    # Get frame range
+    in_frame = cmds.playbackOptions(q=True, min=True)
+    out_frame = cmds.playbackOptions(q=True, max=True)
+
+    # Create Init attr
+    ctrl.add("Init", cmds.getAttr(obj_attr, t=in_frame))
+
+    # Create timewarp
+    ctrl.add("Time", 0)
+    ctrl.set("Time", in_frame, in_frame, ott="linear")
+    ctrl.set("Time", out_frame, out_frame, itt="linear")
+
+    # Create scale
+    ctrl.add("Scalar", 1)
+
+    # Create offset
+    ctrl.add("Offset", ctrl.get("Init"))
 
 def main():
     controller(cmds.ls(sl=True)[0], "tx")
