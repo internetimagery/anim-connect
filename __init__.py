@@ -1,9 +1,11 @@
 # Connect anim curves, providing offset controls.
 import maya.cmds as cmds
 
-class Node(object):
-    def __init__(s, transform):
-        s.trans = transform
+class Annotation(object):
+    def __init__(s, obj, text):
+        """ Create annotation """
+        ann_shape = cmds.annotate(obj, tx=text)
+        s.trans = cmds.listRelatives(ann_shape, p=True, pa=True)[0]
         for a in ("t", "r", "s"):
             for b in ("x", "y", "z"):
                 cmds.setAttr(s._attr(a, b), k=False, cb=False)
@@ -24,37 +26,46 @@ class Node(object):
     def __str__(s): return s.trans
     def _attr(s, *attrs): return "{}.{}".format(s.trans, "".join(attrs))
 
-def annotate(obj, text):
-    """ Create annotation """
-    ann_shape = cmds.annotate(obj, tx=text)
-    ann = cmds.listRelatives(ann_shape, p=True, pa=True)[0]
-    for a in ("t", "r", "s"):
-        for b in ("x", "y", "z"):
-            cmds.setAttr("{}.{}{}".format(ann, a, b), k=False, cb=False)
-    return Node(ann)
+class Node(object):
+    def __init__(s, name):
+        s.node = cmds.shadingNode()
+    def connect(s, from_, to):
+        pass
+
+def get_curves(obj_attr):
+    """ Get anim curve from object attr """
+    return cmds.listConnections(obj_attr, d=False, type="animCurve") or []
 
 def controller(obj, attr):
     """ Create controller """
-    ctrl = annotate(obj, "OFFSET")
     obj_attr = "{}.{}".format(obj, attr)
+    obj_curves = get_curves(obj_attr)
+    if not obj_curves:
+        raise RuntimeError("No animation curve found!")
+    for curve in obj_curves:
+        # Create control
+        ctrl = Annotation(obj, "OFFSET")
 
-    # Get frame range
-    in_frame = cmds.playbackOptions(q=True, min=True)
-    out_frame = cmds.playbackOptions(q=True, max=True)
+        # Get frame range
+        in_frame = cmds.playbackOptions(q=True, min=True)
+        out_frame = cmds.playbackOptions(q=True, max=True)
 
-    # Create Init attr
-    ctrl.add("Init", cmds.getAttr(obj_attr, t=in_frame))
+        # Create Init attr
+        ctrl.add("Init", cmds.getAttr(obj_attr, t=in_frame))
 
-    # Create timewarp
-    ctrl.add("Time", 0)
-    ctrl.set("Time", in_frame, in_frame, ott="linear")
-    ctrl.set("Time", out_frame, out_frame, itt="linear")
+        # Create timewarp
+        ctrl.add("Time", 0)
+        ctrl.set("Time", in_frame, in_frame, ott="linear")
+        ctrl.set("Time", out_frame, out_frame, itt="linear")
 
-    # Create scale
-    ctrl.add("Scalar", 1)
+        # Create scale
+        ctrl.add("Scalar", 1)
 
-    # Create offset
-    ctrl.add("Offset", ctrl.get("Init"))
+        # Create offset
+        ctrl.add("Offset", ctrl.get("Init"))
+
+        # Create output
+        ctrl.add("Output", 0)
 
 def main():
     controller(cmds.ls(sl=True)[0], "tx")
